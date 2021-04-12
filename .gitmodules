@@ -1,0 +1,3 @@
+[submodule "Smart Home"]
+	path = Projects/SmartHome
+	url = git@github.com:YT37/Smart-Home-Arduino.git

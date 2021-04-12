@@ -1,5 +1,5 @@
 # UltrasonicDistance
-This project claculates distance using an Ultrasonic sensor.
+- This project claculates distance using an Ultrasonic sensor.
 
 # Pinouts
 - Ultrasonic - Trig-2, Echo-3

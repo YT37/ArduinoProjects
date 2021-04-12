@@ -49,7 +49,7 @@ void loop() {
 
   LP = (PC * 60 / 7.5);
 
-  if (digitalRead(Override) != 1) {
+  if (digitalRead(Override) == LOW) {
     if (LP > 100) {
       bridge1.digitalWrite(Relay, HIGH);
     } else {
