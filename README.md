@@ -1,5 +1,5 @@
-# ArduinoSnippets
-These are small projects or code snippets from diffrent tutorials.
+# ArduinoProjects
+- These are small projects in arduino.
 
 # Pinouts
 - They are in their respective folders.
