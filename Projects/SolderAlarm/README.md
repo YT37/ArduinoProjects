@@ -1,4 +1,4 @@
-# SolderAlarm-Arduino
+# SolderAlarm
 - This project sounds an alarm when the soldering iron is ready.
 
 # Pinouts
@@ -7,4 +7,4 @@
 - Button - D7
 
 # Required Libraries
- - DHT
+- DHT

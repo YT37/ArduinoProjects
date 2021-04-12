@@ -6,4 +6,4 @@
 - LCD - SDA-SDA, SCL-SCL
 
 # Required Libraries
- - NewPing
+- NewPing
