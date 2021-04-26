@@ -10,7 +10,7 @@ void setup() {
 
   Blynk.begin("Auth", "SSID", "Password");
 
-  ArduinoOTA.setHostname("Motor");
+  ArduinoOTA.setHostname("Alarm");
   ArduinoOTA.begin();
 }
 
