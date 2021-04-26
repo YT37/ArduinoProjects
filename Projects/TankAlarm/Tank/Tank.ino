@@ -28,8 +28,7 @@ void setup() {
   pinMode(Override, INPUT);
   pinMode(WaterSensor, INPUT);
 
-
-  Blynk.begin("Auth", "SSID", "Pass");
+  Blynk.begin("Auth", "SSID", "Password");
 
   ArduinoOTA.setHostname("Tank");
   ArduinoOTA.begin();
@@ -49,11 +48,10 @@ void loop() {
 
   LP = (PC * 60 / 7.5);
 
-  if (digitalRead(Override) == LOW) {
-    if (LP > 100) {
-      bridge1.digitalWrite(Relay, HIGH);
-    } else {
-      bridge1.digitalWrite(Relay, LOW);
-    }
+  if (LP > 100 && digitalRead(Override) == LOW) {
+    bridge1.digitalWrite(Relay, HIGH);
+  } else {
+    bridge1.digitalWrite(Relay, LOW);
   }
+
 }
