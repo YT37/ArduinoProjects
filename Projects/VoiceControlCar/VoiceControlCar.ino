@@ -10,7 +10,8 @@ AF_DCMotor motor2(2, MOTOR12_64KHZ);
 
 Servo myServo;
 
-void setup() {
+void setup()
+{
   Serial.begin(9600);
   BT.begin(9600);
 
@@ -18,7 +19,8 @@ void setup() {
   myServo.write(90);
 }
 
-void loop() {
+void loop()
+{
   while (BT.available())
   {
     delay(10);

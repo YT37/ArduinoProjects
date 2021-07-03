@@ -1,14 +1,16 @@
 const int Buzzer = 11;
 const int LDR = A0;
 
-void setup() {
+void setup()
+{
   Serial.begin(9600);
 
   pinMode(Buzzer, OUTPUT);
   pinMode(LDR, INPUT);
 }
 
-void loop() {
+void loop()
+{
   int ldrStatus = analogRead(LDR);
   Serial.println(ldrStatus);
 

@@ -14,11 +14,13 @@ NewPing sonar(TrigPin, EchoPin, Max);
 
 float duration, distance;
 
-void setup() {
+void setup()
+{
   lcd.begin(16, 2);
 }
 
-void loop() {
+void loop()
+{
   duration = sonar.ping_median(5);
 
   distance = (duration / 2) * 0.0343;

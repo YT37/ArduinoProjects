@@ -12,7 +12,8 @@ int Temp;
 
 DHT dht(DHTP, DHTTYPE);
 
-void setup() {
+void setup()
+{
   Serial.begin(9600);
 
   pinMode(Buzzer, OUTPUT);
@@ -21,20 +22,24 @@ void setup() {
   dht.begin();
 }
 
-void loop() {
+void loop()
+{
   Temp = dht.readTemperature();
   Serial.println(Temp);
 
   ButtonRead = digitalRead(Button);
-  if (Temp >= TriggerTemp && ButtonRead == HIGH) {
+  if (Temp >= TriggerTemp && ButtonRead == HIGH)
+  {
     digitalWrite(Buzzer, HIGH);
   }
 
-  else if (Temp != TriggerTemp || Temp < TriggerTemp && ButtonRead == HIGH || ButtonRead == LOW) {
+  else if (Temp != TriggerTemp || Temp < TriggerTemp && ButtonRead == HIGH || ButtonRead == LOW)
+  {
     digitalWrite(Buzzer, LOW);
   }
 
-  else {
+  else
+  {
     digitalWrite(Buzzer, LOW);
   }
 

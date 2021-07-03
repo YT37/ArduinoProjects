@@ -5,7 +5,8 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
 
   Blynk.begin("Auth", "SSID", "Password");
@@ -14,7 +15,8 @@ void setup() {
   ArduinoOTA.begin();
 }
 
-void loop() {
+void loop()
+{
   Blynk.run();
   ArduinoOTA.handle();
 }

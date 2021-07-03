@@ -7,7 +7,8 @@ int F = 9;
 int G = 8;
 int Delay = 100;
 
-void setup() {
+void setup()
+{
   pinMode(A, OUTPUT);
   pinMode(B, OUTPUT);
   pinMode(C, OUTPUT);
@@ -17,7 +18,8 @@ void setup() {
   pinMode(G, OUTPUT);
 }
 
-void loop() {
+void loop()
+{
   digitalWrite(A, HIGH); //1
   digitalWrite(B, HIGH);
   digitalWrite(C, HIGH);

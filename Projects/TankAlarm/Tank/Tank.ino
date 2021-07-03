@@ -8,24 +8,25 @@
 volatile float PC;
 int LP;
 
-const int Override = 4;
 const int Relay = 5;
 const int WaterSensor = 13;
 
 WidgetBridge bridge1(V1);
 
-BLYNK_CONNECTED() {
+BLYNK_CONNECTED()
+{
   bridge1.setAuthToken("Auth");
 }
 
-ICACHE_RAM_ATTR void RPM() {
+ICACHE_RAM_ATTR void RPM()
+{
   PC++;
 }
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
 
-  pinMode(Override, INPUT);
   pinMode(WaterSensor, INPUT);
 
   Blynk.begin("Auth", "SSID", "Password");
@@ -36,22 +37,21 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(WaterSensor), RPM, RISING);
 }
 
-void loop() {
+void loop()
+{
   Blynk.run();
 
   PC = 0;
 
   sei();
   ArduinoOTA.handle();
-  delay (1000);
+  delay(1000);
   cli();
 
   LP = (PC * 60 / 7.5);
 
-  if (LP > 100 && digitalRead(Override) == LOW) {
+  if (LP > 100)
     bridge1.digitalWrite(Relay, HIGH);
-  } else {
+  else
     bridge1.digitalWrite(Relay, LOW);
-  }
-
 }
