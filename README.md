@@ -1,5 +1,5 @@
 # ArduinoProjects
-- These are projects in Arduino.
+- These are projects for Arduino.
 
 # Pinouts
 - They are in their respective folders.
