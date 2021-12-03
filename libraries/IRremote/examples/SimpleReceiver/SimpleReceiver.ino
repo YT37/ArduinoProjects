@@ -15,13 +15,12 @@
  * Specify which protocol(s) should be used for decoding.
  * If no protocol is defined, all protocols are active.
  */
-//#define DECODE_DENON
-//#define DECODE_SHARP        // the same as DECODE_DENON
+//#define DECODE_DENON        // Includes Sharp
 //#define DECODE_JVC
 //#define DECODE_KASEIKYO
 //#define DECODE_PANASONIC    // the same as DECODE_KASEIKYO
 //#define DECODE_LG
-#define DECODE_NEC
+#define DECODE_NEC          // Includes Apple and Onkyo
 //#define DECODE_SAMSUNG
 //#define DECODE_SONY
 //#define DECODE_RC5
@@ -32,6 +31,9 @@
 //#define DECODE_MAGIQUEST
 //#define DECODE_WHYNTER
 
+//#define DECODE_DISTANCE     // universal decoder for pulse width or pulse distance protocols
+//#define DEBUG // Activate this for lots of lovely debug output from the decoders.
+//#define INFO                // To see valuable informations from universal decoder for pulse width or pulse distance protocols
 //#define DECODE_HASH         // special decoder for all protocols
 
 #include <Arduino.h>
@@ -41,7 +43,7 @@
  */
 #include "PinDefinitionsAndMore.h"
 
-#include <IRremote.h>
+#include <IRremote.hpp>
 
 void setup() {
     Serial.begin(115200);
@@ -53,7 +55,9 @@ void setup() {
      */
     IrReceiver.begin(IR_RECEIVE_PIN, ENABLE_LED_FEEDBACK, USE_DEFAULT_FEEDBACK_LED_PIN);
 
-    Serial.print(F("Ready to receive IR signals at pin "));
+    Serial.print(F("Ready to receive IR signals of protocols: "));
+    printActiveIRProtocols(&Serial);
+    Serial.print(F("at pin "));
     Serial.println(IR_RECEIVE_PIN);
 }
 

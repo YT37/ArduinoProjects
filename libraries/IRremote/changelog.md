@@ -1,8 +1,49 @@
 # Changelog
 The latest version may not be released!
+See also the commit log at github: https://github.com/Arduino-IRremote/Arduino-IRremote/commits/master
+
+## 3.5.0
+- Improved ir_DistanceProtocol.
+- Tone for ESP32.
+- last phase renamed *.cpp.h to .hpp.
+- No deprecation print for ATtinies.
+- Renamed ac_LG.cpp to ac_LG.hpp.
+- Maintained MagiQuest by E. Stuart Hicks.
+- Improved print Pronto by Asuki Kono.
+- Added printActiveIRProtocols() function.
+- Used IR_SEND_PIN to reduce code size and improved send timing for AVR.
+
+## 3.4.0
+- Added LG2 protocol.
+- Added ATtiny167 (Digispark Pro) support.
+- Renamed *.cpp.h to .hpp.
+- organized carrier frequencies.
+- Compiler switch USE_OPEN_DRAIN_OUTPUT_FOR_SEND_PIN added.
+- Moved blink13() back to IRrecv class.
+- Added Kaseikyo convenience functions like sendKaseikyo_Denon().
+- Improved / adjusted LG protocol and added class Aircondition_LG based on real hardware supplied by makerspace 201 (https://wiki.hackerspaces.org/ZwoNullEins) from Cologne.
+- Improved universal decoder for pulse width or pulse distance protocols to support more than 32 bits.
+- Added mbed support.
+
+## 3.3.0
+- Fix errors if LED_BUILTIN is not defined.
+- Fixed error for AVR timer1. Thanks to alexbarcelo.
+- New example IRremoteExtensionTest.
+- Enabled megaAVR 0-series devices.
+- Added universal decoder for pulse width or pulse distance protocols.
+
+## 3.2.0
+- Fix for ESP32 send Error, removed `USE_SOFT_SEND_PWM` macro.
+- Added Onkyo protocol.
+- Support for old 2.x code by backwards compatible `decode(decode_results *aResults)` function.
+- Removed USE_OLD_DECODE macro and added NO_LEGACY_COMPATIBILITY macro.
+- Added ATtiny1604 support.
+- New SendAndReceive example.
+- Added ESP8266 support.
+- Extended DEBUG output.
 
 ## 3.1.0
-- USE_SOFT_SEND_PWM is active by default.
+- Generation of PWM by software is active by default.
 - Removed decode_results results.
 - Renamed most irparams_struct values.
 - Fixed LG send bug and added unit test.
@@ -33,6 +74,7 @@ The latest version may not be released!
 - Fixed JVC repeat error.
 
 ## 3.0.0 + 3.0.1 2021/02
+- New LSB first decoders are default.
 - Added SendRaw with byte data.
 - Fixed resume bug if irparams.rawlen >= RAW_BUFFER_LENGTH. Thanks to Iosif Peterfi
 - Added `dumpPronto(String *aString, unsigned int frequency)` with String object as argument. Thanks to Iosif Peterfi
@@ -54,10 +96,9 @@ The latest version may not be released!
 - Changed License to MIT see https://github.com/Arduino-IRremote/Arduino-IRremote/issues/397.
 - Added ATtiny timer 1 support.
 - Changed wrong return code signature of decodePulseDistanceData() and its handling.
-- Removed Mitsubishi protocol, since the implementation is in contradiction with all documentation I could found and therefore supposed to be wrong.
-- Removed AIWA implementation, since it is only for 1 device and at least sending implemented wrong.
+- Removed Mitsubishi protocol, since the implementation is in contradiction with all documentation I found and therefore supposed to be wrong.
+- Removed AIWA implementation, since it is only for 1 device and at least the sending was implemented wrong.
 - Added Lego_PF decode.
-- Added new example IR2Keyboard.
 - Changed internal usage of custom_delay_usec.
 - Moved dump/print functions from example to irReceiver.
 - irPronto.cpp: Using Print instead of Stream saves 1020 bytes program memory. Changed from & to * parameter type to be more transparent and consistent with other code of IRremote.

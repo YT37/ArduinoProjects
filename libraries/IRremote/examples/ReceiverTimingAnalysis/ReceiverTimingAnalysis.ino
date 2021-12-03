@@ -48,7 +48,7 @@ void setup()
     pinMode(LED_BUILTIN, OUTPUT);
     Serial.begin(115200);
 #if defined(__AVR_ATmega32U4__) || defined(SERIAL_USB) || defined(SERIAL_PORT_USBVIRTUAL) || defined(ARDUINO_attiny3217)
-    delay(4000); // To be able to connect Serial monitor after reset or power up and before first printout
+    delay(4000); // To be able to connect Serial monitor after reset or power up and before first print out. Do not wait for an attached Serial Monitor!
 #endif
     // Just to know which program is running on my Arduino
     Serial.println(F("START " __FILE__ " from " __DATE__));
@@ -174,7 +174,7 @@ void loop()
             Serial.print(MarkAndShortSpaceAverage);
             Serial.print(F("us   Delta (to NEC standard 560)="));
             Serial.print(MarkAndShortSpaceAverage - 560);
-            Serial.print(F("us\r\n Mark - Average -> MarkExcess="));
+            Serial.print(F("us\r\n Mark - Average -> MARK_EXCESS_MICROS="));
             Serial.print((int16_t) Mark.average - MarkAndShortSpaceAverage);
             Serial.print(F("us"));
             Serial.println();
@@ -190,14 +190,15 @@ void loop()
  * Just add to the appropriate timing structure.
  */
 #if defined(ESP8266)
-ICACHE_RAM_ATTR
+void ICACHE_RAM_ATTR measureTimingISR()
 #elif defined(ESP32)
-IRAM_ATTR
-#endif
-#if defined(EICRA) && defined(EIFR) && defined(EIMSK)
-ISR(INT1_vect)
+void IRAM_ATTR measureTimingISR()
 #else
+#  if defined(EICRA) && defined(EIFR) && defined(EIMSK)
+ISR(INT1_vect)
+#  else
 void measureTimingISR()
+#  endif
 #endif
 {
     uint32_t tMicros = micros();

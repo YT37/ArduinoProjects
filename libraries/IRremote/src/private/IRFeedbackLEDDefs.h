@@ -27,7 +27,8 @@
 
 // Sparkfun Pro Micro is __AVR_ATmega32U4__ but has different external circuit
 #elif defined(ARDUINO_AVR_PROMICRO)
-// We have no built in LED -> reuse RX LED
+// We have no built in LED at pin 13 -> reuse RX LED
+#undef LED_BUILTIN
 #define LED_BUILTIN        LED_BUILTIN_RX
 #define FEEDBACK_LED_ON()   RXLED1
 #define FEEDBACK_LED_OFF()  RXLED0
@@ -36,10 +37,6 @@
 #elif defined(__AVR_ATmega32U4__)
 #define FEEDBACK_LED_ON()   (PORTC |= B10000000)
 #define FEEDBACK_LED_OFF()  (PORTC &= B01111111)
-
-#elif defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega8U2__) || defined(__AVR_ATmega16U2__)  || defined(__AVR_ATmega32U2__)
-#define FEEDBACK_LED_ON()   (digitalWrite(LED_BUILTIN, HIGH))
-#define FEEDBACK_LED_OFF()  (digitalWrite(LED_BUILTIN, LOW))
 
 // Arduino Uno, Nano etc
 #elif defined(__AVR_ATmega328P__) || defined(__AVR_ATmega328PB__) || defined(__AVR_ATmega168__)
@@ -51,7 +48,7 @@
 #define FEEDBACK_LED_ON()   (PORTB |= B10000000)
 #define FEEDBACK_LED_OFF()  (PORTB &= B01111111)
 
-#elif defined(__AVR_ATmega644P__) || defined(__AVR_ATmega644__)
+#elif defined(__AVR_ATmega644P__) || defined(__AVR_ATmega644__) || defined(__AVR_ATtiny88__)
 #define LED_BUILTIN        0
 #define FEEDBACK_LED_ON()   (PORTD |= B00000001)
 #define FEEDBACK_LED_OFF()  (PORTD &= B11111110)
@@ -62,26 +59,24 @@
 #define FEEDBACK_LED_ON()   (PORTC.OUTSET = _BV(6))
 #define FEEDBACK_LED_OFF()  (PORTC.OUTCLR = _BV(6))
 
-
-
 #elif defined(PARTICLE)
 #define LED_BUILTIN       D7
-#define FEEDBACK_LED_ON()  digitalWrite(LED_BUILTIN,1)
-#define FEEDBACK_LED_OFF() digitalWrite(LED_BUILTIN,0)
+#define FEEDBACK_LED_ON()  digitalWrite(LED_BUILTIN, 1)
+#define FEEDBACK_LED_OFF() digitalWrite(LED_BUILTIN, 0)
 
-// Arduino Zero and BluePill have an LED which is active low
-#elif defined(__STM32F1__) || defined(STM32F1xx)
+// Arduino Zero and BluePill and ESP8266 have an LED which is active low
+#elif defined(__STM32F1__) || defined(STM32F1xx) || defined(ESP8266)
 #define FEEDBACK_LED_ON()   digitalWrite(LED_BUILTIN, LOW)
 #define FEEDBACK_LED_OFF()  digitalWrite(LED_BUILTIN, HIGH)
 
-#elif defined(ESP32)
 #else
 /*
- * Default case
+ * Default case suitable for most boards
  */
+#  if defined(LED_BUILTIN)
 #define FEEDBACK_LED_ON()   digitalWrite(LED_BUILTIN, HIGH)
 #define FEEDBACK_LED_OFF()  digitalWrite(LED_BUILTIN, LOW)
-#  ifndef LED_BUILTIN
+#  else
 /*
  * print a warning
  */

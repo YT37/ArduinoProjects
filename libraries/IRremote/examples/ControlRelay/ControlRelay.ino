@@ -33,12 +33,16 @@
  */
 #include <Arduino.h>
 
+#if FLASHEND <= 0x1FFF  // For 8k flash or less, like ATtiny85. Exclude exotic protocols.
+#define EXCLUDE_UNIVERSAL_PROTOCOLS // Saves up to 1000 bytes program space.
+#define EXCLUDE_EXOTIC_PROTOCOLS
+#endif
 /*
  * Define macros for input and output pin etc.
  */
 #include "PinDefinitionsAndMore.h"
 
-#include <IRremote.h>
+#include <IRremote.hpp>
 
 #if defined(APPLICATION_PIN)
 #define RELAY_PIN   APPLICATION_PIN
@@ -52,7 +56,7 @@ void setup() {
 
     Serial.begin(115200);
 #if defined(__AVR_ATmega32U4__) || defined(SERIAL_USB) || defined(SERIAL_PORT_USBVIRTUAL)  || defined(ARDUINO_attiny3217)
-    delay(4000); // To be able to connect Serial monitor after reset or power up and before first printout
+    delay(4000); // To be able to connect Serial monitor after reset or power up and before first print out. Do not wait for an attached Serial Monitor!
 #endif
     // Just to know which program is running on my Arduino
     Serial.println(F("START " __FILE__ " from " __DATE__ "\r\nUsing library version " VERSION_IRREMOTE));
@@ -81,12 +85,18 @@ void loop() {
                 Serial.println(F("off"));
             }
 
+#if FLASHEND >= 0x3FFF      // For 16k flash or more, like ATtiny1604
             IrReceiver.printIRResultShort(&Serial);
             Serial.println();
             if (IrReceiver.decodedIRData.protocol == UNKNOWN) {
                 // We have an unknown protocol, print more info
                 IrReceiver.printIRResultRawFormatted(&Serial, true);
             }
+#else
+            // Print a minimal summary of received data
+            IrReceiver.printIRResultMinimal(&Serial);
+            Serial.println();
+#endif // FLASHEND
         }
         last = millis();
         IrReceiver.resume(); // Enable receiving of the next value

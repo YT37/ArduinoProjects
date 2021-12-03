@@ -32,6 +32,10 @@
  */
 #include <Arduino.h>
 
+#if !defined(RAW_BUFFER_LENGTH)
+#define RAW_BUFFER_LENGTH  100  // Maximum length of raw duration buffer. Must be even. 100 supports up to 48 bit codings inclusive 1 start and 1 stop bit.
+//#define RAW_BUFFER_LENGTH  750  // 750 is the value for air condition remotes.
+#endif
 /*
  * Define macros for input and output pin etc.
  */
@@ -45,7 +49,11 @@
  */
 #define MARK_EXCESS_MICROS    20 // recommended for the cheap VS1838 modules
 
-#include <IRremote.h>
+//#define RECORD_GAP_MICROS 12000 // Activate it for some LG air conditioner protocols
+//#define DEBUG // Activate this for lots of lovely debug output from the decoders.
+#define INFO // To see valuable informations from universal decoder for pulse width or pulse distance protocols
+
+#include <IRremote.hpp>
 
 //+=============================================================================
 // Configure the Arduino
@@ -55,14 +63,16 @@ void setup() {
 
     Serial.begin(115200);   // Status message will be sent to PC at 9600 baud
 #if defined(__AVR_ATmega32U4__) || defined(SERIAL_USB) || defined(SERIAL_PORT_USBVIRTUAL)  || defined(ARDUINO_attiny3217)
-    delay(4000); // To be able to connect Serial monitor after reset or power up and before first printout
+    delay(4000); // To be able to connect Serial monitor after reset or power up and before first print out. Do not wait for an attached Serial Monitor!
 #endif
     // Just to know which program is running on my Arduino
     Serial.println(F("START " __FILE__ " from " __DATE__ "\r\nUsing library version " VERSION_IRREMOTE));
 
     IrReceiver.begin(IR_RECEIVE_PIN, ENABLE_LED_FEEDBACK); // Start the receiver, enable feedback LED, take LED feedback pin from the internal boards definition
 
-    Serial.print(F("Ready to receive IR signals at pin "));
+    Serial.print(F("Ready to receive IR signals of protocols: "));
+    printActiveIRProtocols(&Serial);
+    Serial.print(F("at pin "));
     Serial.println(IR_RECEIVE_PIN);
 }
 
@@ -73,7 +83,9 @@ void loop() {
     if (IrReceiver.decode()) {  // Grab an IR code
         // Check if the buffer overflowed
         if (IrReceiver.decodedIRData.flags & IRDATA_FLAGS_WAS_OVERFLOW) {
-            Serial.println("IR code too long. Edit IRremoteInt.h and increase RAW_BUFFER_LENGTH");
+            Serial.println(F("Overflow detected"));
+            Serial.println(F("Try to increase the \"RAW_BUFFER_LENGTH\" value of " STR(RAW_BUFFER_LENGTH) " in " __FILE__));
+            // see also https://github.com/Arduino-IRremote/Arduino-IRremote#modifying-compile-options-with-sloeber-ide
         } else {
             Serial.println();                               // 2 blank lines between entries
             Serial.println();
@@ -84,9 +96,11 @@ void loop() {
             Serial.println(F("Raw result in microseconds - with leading gap"));
             IrReceiver.printIRResultRawFormatted(&Serial, true);  // Output the results in RAW format
             Serial.println();                               // blank line between entries
-            Serial.println(F("Result as internal ticks (50 us) array - compensated with MARK_EXCESS_MICROS"));
+            Serial.print(F("Result as internal ticks (50 us) array - compensated with MARK_EXCESS_MICROS="));
+            Serial.println(MARK_EXCESS_MICROS);
             IrReceiver.compensateAndPrintIRResultAsCArray(&Serial, false); // Output the results as uint8_t source code array of ticks
-            Serial.println(F("Result as microseconds array - compensated with MARK_EXCESS_MICROS"));
+            Serial.print(F("Result as microseconds array - compensated with MARK_EXCESS_MICROS="));
+            Serial.println(MARK_EXCESS_MICROS);
             IrReceiver.compensateAndPrintIRResultAsCArray(&Serial, true); // Output the results as uint16_t source code array of micros
             IrReceiver.printIRResultAsCVariables(&Serial);  // Output address and data as source code variables
 

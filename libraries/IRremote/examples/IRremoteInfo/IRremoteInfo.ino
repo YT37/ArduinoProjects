@@ -10,7 +10,7 @@
  * Original Author: AnalysIR - IR software & modules for Makers & Pros, visit http://www.AnalysIR.com
  */
 
-#include <IRremote.h>
+#include <IRremote.hpp>
 
 // Function declarations for non Arduino IDE's
 void dumpHeader();
@@ -29,7 +29,7 @@ void dumpFooter();
 void setup() {
     Serial.begin(115200);
 #if defined(__AVR_ATmega32U4__) || defined(SERIAL_USB) || defined(SERIAL_PORT_USBVIRTUAL)  || defined(ARDUINO_attiny3217)
-    delay(4000); // To be able to connect Serial monitor after reset or power up and before first printout
+    delay(4000); // To be able to connect Serial monitor after reset or power up and before first print out. Do not wait for an attached Serial Monitor!
 #endif
     // Just to know which program is running on my Arduino
     Serial.println(F("START " __FILE__ " from " __DATE__ "\r\nUsing library version " VERSION_IRREMOTE));
@@ -100,12 +100,18 @@ void dumpTIMER() {
 
 void dumpTimerPin() {
     Serial.print(F("IR Send Pin: "));
+#if defined(IR_SEND_PIN)
+    Serial.println(IR_SEND_PIN);
+#else
     Serial.println(IrSender.sendPin);
+#endif
 }
 
 void dumpClock() {
+#if defined(F_CPU)
     Serial.print(F("MCU Clock: "));
     Serial.println(F_CPU);
+#endif
 }
 
 void dumpPlatform() {
@@ -270,13 +276,6 @@ void dumpProtocols() {
 
     Serial.print(F("LG:           "));
 #if defined(DECODE_LG)
-    Serial.println(F("Enabled"));
-#else
-    Serial.println(F("Disabled"));
-#endif
-
-    Serial.print(F("SHARP:        "));
-#if defined(DECODE_SHARP)
     Serial.println(F("Enabled"));
 #else
     Serial.println(F("Disabled"));

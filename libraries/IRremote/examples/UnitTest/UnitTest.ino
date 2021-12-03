@@ -1,7 +1,8 @@
 /*
  * UnitTest.cpp
  *
- * Demonstrates sending IR codes in standard format with address and command
+ * Demonstrates sending IR codes in standard format with address and command and
+ * simultaneously receiving. Both values are checked for consistency.
  *
  *  This file is part of Arduino-IRremote https://github.com/Arduino-IRremote/Arduino-IRremote.
  *
@@ -29,21 +30,57 @@
  *
  ************************************************************************************
  */
+
 #include <Arduino.h>
+
+#if !defined(RAW_BUFFER_LENGTH)
+#define RAW_BUFFER_LENGTH  100  // Maximum length of raw duration buffer. Must be even. 100 supports up to 48 bit codings inclusive 1 start and 1 stop bit.
+//#define RAW_BUFFER_LENGTH  750  // 750 is the value for air condition remotes.
+#endif
 
 /*
  * Define macros for input and output pin etc.
  */
 #include "PinDefinitionsAndMore.h"
 
-//#define EXCLUDE_EXOTIC_PROTOCOLS // saves around 240 bytes program space if IrSender.write is used
+#if FLASHEND >= 0x1FFF      // For 8k flash or more, like ATtiny85
+#define DECODE_DENON        // Includes Sharp
+#define DECODE_KASEIKYO
+#define DECODE_NEC          // Includes Apple and Onkyo
+#  if FLASHEND >= 0x1FFF && !defined(CLOCK_SOURCE) // ATTinyCore is bigger than digispark core
+#define DECODE_SONY
+#  endif
+#endif
+
+#if FLASHEND >= 0x3FFF      // For 16k flash or more, like ATtiny1604
+#define DECODE_JVC
+#define DECODE_RC5
+#define DECODE_RC6
+#define DECODE_PANASONIC    // the same as DECODE_KASEIKYO
+
+#define DECODE_DISTANCE     // universal decoder for pulse width or pulse distance protocols
+#define DECODE_HASH         // special decoder for all protocols
+#endif
+
+#if FLASHEND >= 0x7FFF      // For 32k flash or more, like ATmega328
+#define DECODE_SAMSUNG
+#define DECODE_LG
+
+#define DECODE_BOSEWAVE
+#define DECODE_LEGO_PF
+#define DECODE_MAGIQUEST
+#define DECODE_WHYNTER
+#endif
+
 //#define SEND_PWM_BY_TIMER
 //#define USE_NO_SEND_PWM
-//#define IR_MEASURE_TIMING
-#define MARK_EXCESS_MICROS    -40 // for my VS1838 to get Denon right
+//#define _IR_MEASURE_TIMING
+#define MARK_EXCESS_MICROS    10 // Adapt it to your IR receiver module. See also IRremote.h.
 #define DISABLE_LED_FEEDBACK_FOR_RECEIVE // halves ISR duration
+//#define DEBUG // Activate this for lots of lovely debug output from the decoders.
+#define INFO // To see valuable informations from universal decoder for pulse width or pulse distance protocols
 
-#include <IRremote.h>
+#include <IRremote.hpp>
 
 #if defined(APPLICATION_PIN)
 #define DEBUG_BUTTON_PIN    APPLICATION_PIN // if held low, print timing for each received data
@@ -56,13 +93,13 @@
 
 void setup() {
     pinMode(DEBUG_BUTTON_PIN, INPUT_PULLUP);
-#if defined(IR_MEASURE_TIMING) && defined(IR_TIMING_TEST_PIN)
-    pinMode(IR_TIMING_TEST_PIN, OUTPUT);
+#if defined(_IR_MEASURE_TIMING) && defined(_IR_TIMING_TEST_PIN)
+    pinMode(_IR_TIMING_TEST_PIN, OUTPUT);
 #endif
 
     Serial.begin(115200);
 #if defined(__AVR_ATmega32U4__) || defined(SERIAL_USB) || defined(SERIAL_PORT_USBVIRTUAL)  || defined(ARDUINO_attiny3217)
-    delay(4000); // To be able to connect Serial monitor after reset or power up and before first printout
+    delay(4000); // To be able to connect Serial monitor after reset or power up and before first print out. Do not wait for an attached Serial Monitor!
 #endif
     // Just to know which program is running on my Arduino
     Serial.println(F("START " __FILE__ " from " __DATE__ "\r\nUsing library version " VERSION_IRREMOTE));
@@ -73,28 +110,43 @@ void setup() {
     IrReceiver.begin(IR_RECEIVE_PIN);
     IrSender.begin(IR_SEND_PIN, ENABLE_LED_FEEDBACK); // Specify send pin and enable feedback LED at default feedback LED pin
 
-    Serial.print(F("Ready to receive IR signals at pin "));
+    Serial.print(F("Ready to receive IR signals of protocols: "));
+    printActiveIRProtocols(&Serial);
+    Serial.print(F("at pin "));
+#if defined(ARDUINO_ARCH_STM32) || defined(ESP8266)
+    Serial.println(IR_RECEIVE_PIN_STRING);
+#else
     Serial.println(IR_RECEIVE_PIN);
+#endif
     Serial.print(F("Ready to send IR signals at pin "));
+#if defined(ARDUINO_ARCH_STM32) || defined(ESP8266)
+    Serial.println(IR_SEND_PIN_STRING);
+#else
     Serial.println(IR_SEND_PIN);
+#endif
 
-#if defined(USE_SOFT_SEND_PWM) && !defined(ESP32) // for esp32 we use PWM generation by hw_timer_t for each pin
+#if FLASHEND >= 0x3FFF  // For 16k flash or more, like ATtiny1604
+// For esp32 we use PWM generation by ledcWrite() for each pin.
+#  if !defined(SEND_PWM_BY_TIMER) && !defined(USE_NO_SEND_PWM) && !defined(ESP32)
     /*
-     * Print internal signal generation info
+     * Print internal software PWM generation info
      */
-    IrSender.enableIROut(38);
-
-    Serial.print(F("Send signal mark duration is "));
+    IrSender.enableIROut(38); // Call it with 38 kHz to initialize the values printed below
+    Serial.print(F("Send signal mark duration for 38kHz  is "));
     Serial.print(IrSender.periodOnTimeMicros);
     Serial.print(F(" us, pulse correction is "));
-    Serial.print((uint16_t) PULSE_CORRECTION_NANOS);
+    Serial.print(IrSender.getPulseCorrectionNanos());
     Serial.print(F(" ns, total period is "));
     Serial.print(IrSender.periodTimeMicros);
     Serial.println(F(" us"));
-#endif
+#  endif
+
     // infos for receive
+    Serial.print(RECORD_GAP_MICROS);
+    Serial.println(F(" us is the (minimum) gap, after which the start of a new IR packet is assumed"));
     Serial.print(MARK_EXCESS_MICROS);
     Serial.println(F(" us are subtracted from all marks and added to all spaces for decoding"));
+#endif
 }
 
 void checkReceive(uint16_t aSentAddress, uint16_t aSentCommand) {
@@ -103,14 +155,22 @@ void checkReceive(uint16_t aSentAddress, uint16_t aSentCommand) {
 
     if (IrReceiver.decode()) {
 // Print a short summary of received data
+#if FLASHEND >= 0x3FFF  // For 16k flash or more, like ATtiny1604
         IrReceiver.printIRResultShort(&Serial);
+#else
+        IrReceiver.printIRResultMinimal(&Serial);
+#endif
 
         if (IrReceiver.decodedIRData.flags & IRDATA_FLAGS_WAS_OVERFLOW) {
             IrReceiver.decodedIRData.flags = false; // yes we have recognized the flag :-)
             Serial.println(F("Overflow detected"));
+            Serial.println(F("Try to increase the \"RAW_BUFFER_LENGTH\" value of " STR(RAW_BUFFER_LENGTH) " in " __FILE__));
+            // see also https://github.com/Arduino-IRremote/Arduino-IRremote#modifying-compile-options-with-sloeber-ide        } else {
+#if FLASHEND >= 0x3FFF  // For 16k flash or more, like ATtiny1604
         } else if (IrReceiver.decodedIRData.protocol == UNKNOWN || digitalRead(DEBUG_BUTTON_PIN) == LOW) {
             // We have an unknown protocol, print more info
             IrReceiver.printIRResultRawFormatted(&Serial, true);
+#endif
         } else {
             /*
              * Check address
@@ -131,6 +191,7 @@ void checkReceive(uint16_t aSentAddress, uint16_t aSentCommand) {
                 Serial.println(aSentCommand, HEX);
             }
         }
+
         IrReceiver.resume();
     } else {
         Serial.println(F("No data received"));
@@ -146,7 +207,7 @@ void checkReceive(uint16_t aSentAddress, uint16_t aSentCommand) {
  */
 uint16_t sAddress = 0xFFF1;
 uint8_t sCommand = 0x76;
-uint8_t sRepeats = 0;
+#define sRepeats  0 // no unit test for repeats
 
 void loop() {
     /*
@@ -157,8 +218,6 @@ void loop() {
     Serial.print(sAddress, HEX);
     Serial.print(F(" command=0x"));
     Serial.print(sCommand, HEX);
-    Serial.print(F(" repeats="));
-    Serial.println(sRepeats);
     Serial.println();
     Serial.println();
 
@@ -174,7 +233,9 @@ void loop() {
     checkReceive(sAddress, sCommand);
     delay(DELAY_AFTER_SEND);
 
-    if (sRepeats == 0) {
+#if FLASHEND >= 0x3FFF  // For 16k flash or more, like ATtiny1604. Code does not fit in program space of ATtiny85 etc.
+
+    if (sAddress == 0xFFF1) {
         /*
          * Send constant values only once in this demo
          */
@@ -188,15 +249,29 @@ void loop() {
                 "0017 0806"), 0); //stop bit, no repeat possible, because of missing repeat pattern
         checkReceive(0x80, 0x45);
         delay(DELAY_AFTER_SEND);
-        /*
-         * With sendNECRaw() you can send even "forbidden" codes with parity errors
-         */
-        Serial.println(
-                F(
-                        "Send NEC with 16 bit address 0x0102 and command 0x34 with NECRaw(0xCC340102) which results in a parity error, since 34 == ~CB and not C0"));
+
+#  if FLASHEND >= 0x7FFF  // For 32k flash or more, like UNO. Code does not fit in program space of ATtiny1604 etc.
+
+        Serial.println(F("Send NEC 16 bit address=0xFB04 and command 0x08 with exact timing (16 bit array format)"));
         Serial.flush();
-        IrSender.sendNECRaw(0xC0340102, sRepeats);
-        checkReceive(0x0102, 0x34);
+        const uint16_t irSignal[] = { 9000, 4500/*Start bit*/, 560, 560, 560, 560, 560, 1690, 560,
+                560/*0010 0x4 of 16 bit address LSB first*/, 560, 560, 560, 560, 560, 560, 560, 560/*0000*/, 560, 1690, 560, 1690,
+                560, 560, 560, 1690/*1101 0xB*/, 560, 1690, 560, 1690, 560, 1690, 560, 1690/*1111*/, 560, 560, 560, 560, 560, 560,
+                560, 1690/*0001 0x08 of command LSB first*/, 560, 560, 560, 560, 560, 560, 560, 560/*0000 0x00*/, 560, 1690, 560,
+                1690, 560, 1690, 560, 560/*1110 Inverted 8 of command*/, 560, 1690, 560, 1690, 560, 1690, 560,
+                1690/*1111 inverted 0 of command*/, 560 /*stop bit*/}; // Using exact NEC timing
+        IrSender.sendRaw(irSignal, sizeof(irSignal) / sizeof(irSignal[0]), NEC_KHZ); // Note the approach used to automatically calculate the size of the array.
+        checkReceive(0xFB04, 0x08);
+        delay(DELAY_AFTER_SEND);
+#  endif
+
+        /*
+         * With sendNECRaw() you can send 32 bit combined codes
+         */
+        Serial.println(F("Send NEC / ONKYO with 16 bit address 0x0102 and 16 bit command 0x0304 with NECRaw(0x03040102)"));
+        Serial.flush();
+        IrSender.sendNECRaw(0x03040102, sRepeats);
+        checkReceive(0x0102, 0x304);
         delay(DELAY_AFTER_SEND);
 
         /*
@@ -211,6 +286,13 @@ void loop() {
         checkReceive(0x0102, 0x34);
         delay(DELAY_AFTER_SEND);
     }
+#endif
+
+    Serial.println(F("Send Onkyo (NEC with 16 bit command)"));
+    Serial.flush();
+    IrSender.sendOnkyo(sAddress, sCommand << 8 | sCommand, sRepeats);
+    checkReceive(sAddress, sCommand << 8 | sCommand);
+    delay(DELAY_AFTER_SEND);
 
     Serial.println(F("Send Apple"));
     Serial.flush();
@@ -230,6 +312,12 @@ void loop() {
     checkReceive(sAddress & 0xFFF, sCommand);
     delay(DELAY_AFTER_SEND);
 
+    Serial.println(F("Send Kaseikyo_Denon variant"));
+    Serial.flush();
+    IrSender.sendKaseikyo_Denon(sAddress & 0xFFF, sCommand, sRepeats);
+    checkReceive(sAddress & 0xFFF, sCommand);
+    delay(DELAY_AFTER_SEND);
+
     Serial.println(F("Send Denon"));
     Serial.flush();
     IrSender.sendDenon(sAddress & 0x1F, sCommand, sRepeats);
@@ -242,12 +330,14 @@ void loop() {
     checkReceive(sAddress & 0x1F, sCommand);
     delay(DELAY_AFTER_SEND);
 
+#if FLASHEND >= 0x3FFF || defined(DIGISTUMPCORE) // ATTinyCore is bigger than Digispark core
     Serial.println(F("Send Sony/SIRCS with 7 command and 5 address bits"));
     Serial.flush();
     IrSender.sendSony(sAddress & 0x1F, sCommand & 0x7F, sRepeats);
     checkReceive(sAddress & 0x1F, sCommand & 0x7F);
     delay(DELAY_AFTER_SEND);
-
+#endif
+#if FLASHEND >= 0x3FFF  // For 16k flash or more, like ATtiny1604
     Serial.println(F("Send Sony/SIRCS with 7 command and 8 address bits"));
     Serial.flush();
     IrSender.sendSony(sAddress & 0xFF, sCommand, sRepeats, SIRCS_15_PROTOCOL);
@@ -296,7 +386,7 @@ void loop() {
     checkReceive(IRSendData.address, IRSendData.command);
     delay(DELAY_AFTER_SEND);
 
-    IRSendData.protocol = JVC; // switch protocol
+    IRSendData.protocol = JVC;  // switch protocol
     Serial.print(F("Send "));
     Serial.println(getProtocolString(IRSendData.protocol));
     Serial.flush();
@@ -305,20 +395,23 @@ void loop() {
     delay(DELAY_AFTER_SEND);
 
     IRSendData.protocol = LG;
-    IRSendData.command = sCommand << 8 | sCommand; // LG supports 16 bit command
+    IRSendData.command = sCommand << 8 | sCommand;  // LG supports 16 bit command
     Serial.print(F("Send "));
     Serial.println(getProtocolString(IRSendData.protocol));
     Serial.flush();
     IrSender.write(&IRSendData, sRepeats);
     checkReceive(IRSendData.address & 0xFF, IRSendData.command);
     delay(DELAY_AFTER_SEND);
+#endif // FLASHEND >= 0x3FFF
 
+#if FLASHEND >= 0x7FFF      // For 32k flash or more, like ATmega328
     IRSendData.protocol = BOSEWAVE;
     Serial.println(F("Send Bosewave with no address and 8 command bits"));
     Serial.flush();
     IrSender.write(&IRSendData, sRepeats);
     checkReceive(0, IRSendData.command & 0xFF);
     delay(DELAY_AFTER_SEND);
+#endif // FLASHEND >= 0x7FFF
 
     /*
      * LEGO is difficult to receive because of its short marks and spaces
@@ -331,10 +424,12 @@ void loop() {
     /*
      * Force buffer overflow
      */
-    Serial.println(F("Force buffer overflow by sending 100 marks and spaces"));
-    for (unsigned int i = 0; i < RAW_BUFFER_LENGTH; ++i) {
-        IrSender.mark(400);
-        IrSender.space(400);
+    Serial.println(F("Force buffer overflow by sending 280 marks and spaces"));
+    for (unsigned int i = 0; i < 140; ++i) {
+        // 400 + 400 should be received as 8/8 and sometimes as 9/7 or 7/9 if compensation by MARK_EXCESS_MICROS is optimal.
+        // 210 + 540 = 750 should be received as 5/10 or 4/11 if compensation by MARK_EXCESS_MICROS is optimal.
+        IrSender.mark(210); // 8 pulses at 38 kHz
+        IrSender.space(540); // to fill up to 750 us
     }
     checkReceive(sAddress, sCommand);
     delay(DELAY_AFTER_SEND);
